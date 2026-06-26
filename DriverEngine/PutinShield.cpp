@@ -24,6 +24,7 @@ namespace shield::core
      LIST_ENTRY LoadedImageListHead;
      FAST_MUTEX ImageListMutex;
      UNICODE_STRING symLinkName;
+  
 
     void handle_process_stop(HANDLE process_id) {
         ExAcquireFastMutex(&ProcessListMutex);
@@ -36,7 +37,7 @@ namespace shield::core
                 PsDereferencePrimaryToken(entry->OrigToken);
                 ExFreePoolWithTag(entry, 'shld');
                 KdPrint(("process %p stopped...\n", process_id));
-                break; // not uaf
+                break; 
             }
             link = link->Flink;
         }
@@ -64,7 +65,6 @@ NTSTATUS shield::getdriverlist::driverlist(PUNICODE_STRING DriverName, PIMAGE_IN
     }
     return STATUS_SUCCESS;
 }
-
 
 void shield::anti_exploit::check_thread_token(HANDLE process_id) {
         PEPROCESS eprocess = nullptr;
@@ -141,6 +141,7 @@ void shield::monitor::save_loaded_image(PUNICODE_STRING image_name, HANDLE proce
         ExReleaseFastMutex(&core::ImageListMutex);
 
         KdPrint(("image saved: PID %p, Path %wZ\n", process_id, &entry->ImagePath));
+        shield::getdriverlist::driverlist(image_name, image_info);
 }
 
 VOID ThreadNotifyRoutine(_In_ HANDLE ProcessId, _In_ HANDLE ThreadId, _In_ BOOLEAN Create) {
@@ -185,16 +186,14 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     PIO_STACK_LOCATION ioStack = IoGetCurrentIrpStackLocation(Irp);
 
-    NTSTATUS status = (ioStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_PUTIN_SHIELD_START_PROTECTION ||
-        ioStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_PUTIN_SHIELD_STOP_PROTECTION)
-        ? STATUS_SUCCESS : STATUS_INVALID_DEVICE_REQUEST;
+    NTSTATUS param = (ioStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_PUTIN_SHIELD_START_PROTECTION ||ioStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_PUTIN_SHIELD_STOP_PROTECTION) ? STATUS_SUCCESS : STATUS_INVALID_DEVICE_REQUEST;
 
-    Irp->IoStatus.Status = status;
+    Irp->IoStatus.Status = param;
     Irp->IoStatus.Information = 0;
 
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
-    return status;
+    return param;
 }
 
 void PutinDriverUnload(_In_ PDRIVER_OBJECT DriverObject) {
@@ -202,6 +201,7 @@ void PutinDriverUnload(_In_ PDRIVER_OBJECT DriverObject) {
     PsRemoveCreateThreadNotifyRoutine(ThreadNotifyRoutine);
 
     ExAcquireFastMutex(&shield::core::ProcessListMutex);
+
     while (!IsListEmpty(&shield::core::TargetProcessListHead)) {
         PLIST_ENTRY link = RemoveHeadList(&shield::core::TargetProcessListHead);
         auto* entry = CONTAINING_RECORD(link, shield::core::ProcessTokenEntry, ListEntry);
@@ -213,6 +213,7 @@ void PutinDriverUnload(_In_ PDRIVER_OBJECT DriverObject) {
     ExReleaseFastMutex(&shield::core::ProcessListMutex);
 
     IoDeleteSymbolicLink(&shield::core::symLinkName);
+
     if (DriverObject->DeviceObject != nullptr) {
         IoDeleteDevice(DriverObject->DeviceObject);
     }
