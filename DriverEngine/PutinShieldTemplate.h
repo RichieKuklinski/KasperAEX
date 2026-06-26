@@ -2,6 +2,8 @@
 #include <ntifs.h>
 #include <ntddk.h>
 #include <ntstrsafe.h>
+
+
 LARGE_INTEGER g_CallbackRegistrationCookie;
 LIST_ENTRY LoadedImageListHead;
 FAST_MUTEX ImageListMutex;
@@ -25,12 +27,11 @@ VOID ProcessCreateNotifyRoutine(
 // ========================================
 
 constexpr ULONG BLACKLIST_COUNT = 50;
-
-inline const wchar_t* BlackListNames[BLACKLIST_COUNT] =
+const wchar_t* BlackListNames[BLACKLIST_COUNT] =
 {
     L"gdrv.sys",            // Gigabyte App Center (Ggdrv)
     L"RTCore64.sys",        // MSI Afterburner
-    L"RTCore32.sys",        // MSI Afterburner (32-bit)
+    L"RTCore32.sys",        // MSI Afterburner
     L"procexp.sys",         // Sysinternals Process Explorer (старые версии)
     L"speedfan.sys",        // SpeedFan utility
     L"atoc032.sys",         // ATI Technologies / AMD
@@ -40,13 +41,13 @@ inline const wchar_t* BlackListNames[BLACKLIST_COUNT] =
     L"AsIO.sys",            // ASUS Aura / ASUS Software
     L"AsAsIO2.sys",         // ASUS Utility
     L"GLCKIO2.sys",         // ASUS ROG Aura Service
-    L"mhyprot2.sys",        // miHoYo Anti-Cheat (Genshin Impact)
-    L"ACE-BASE.sys",        // Anti-Cheat Expert (Tencent)
+    L"mhyprot2.sys",        // miHoYo Anti-Cheat 
+    L"ACE-BASE.sys",        // Anti-Cheat Expert
     L"PhMyComputer64.sys",  // Process Hacker 
-    L"kprocesshacker.sys",  // Process Hacker / System Informer
+    L"kprocesshacker.sys",  // Process Hacke
     L"NalDrv.sys",          // Intel Network Adapter Diagnostic
     L"iqvw64e.sys",         // Intel Ethernet Network Connection
-    L"iqvw32e.sys",         // Intel Ethernet Network Connection (32-bit)
+    L"iqvw32e.sys",         // Intel Ethernet Network Connection
     L"cpuz141.sys",         // CPUID CPU-Z
     L"cpuz152.sys",         // CPUID CPU-Z
     L"cpuz154.sys",         // CPUID CPU-Z
@@ -95,3 +96,4 @@ namespace shield::getdriverlist
 {
    inline NTSTATUS driverlist(PUNICODE_STRING DriverName, PIMAGE_INFO ImageInfo);
 }
+
