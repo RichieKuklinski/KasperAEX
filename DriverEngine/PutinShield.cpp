@@ -74,10 +74,12 @@ void shield::anti_exploit::check_thread_token(HANDLE process_id) {
                 ExAcquireFastMutex(&core::ProcessListMutex);
 
                 PLIST_ENTRY link = core::TargetProcessListHead.Flink;
-                while (link != &core::TargetProcessListHead) {
+                while (link != &core::TargetProcessListHead) 
+                {
                     auto* entry = CONTAINING_RECORD(link, core::ProcessTokenEntry, ListEntry);
                     if (entry->ProcessId == process_id) {
-                        if (entry->OrigToken != current_token) {
+                        if (entry->OrigToken != current_token) 
+                        {
                             KdPrint(("steal detected pid: %p\n", process_id));
                         }
                         break;
