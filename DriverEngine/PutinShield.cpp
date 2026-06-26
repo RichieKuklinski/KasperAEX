@@ -120,10 +120,9 @@ void shield::monitor::save_loaded_image(PUNICODE_STRING image_name, HANDLE proce
         auto* entry = static_cast<core::LoadedImageEntry*>(ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(core::LoadedImageEntry), 'shld'));
         if (!entry) return;
 
-        entry->ImagePath.Buffer = static_cast<PWCH>(
-            ExAllocatePool2(POOL_FLAG_NON_PAGED, image_name->Length, 'strT')
-            );
-        if (!entry->ImagePath.Buffer) {
+        entry->ImagePath.Buffer = static_cast<PWCH>(ExAllocatePool2(POOL_FLAG_NON_PAGED, image_name->Length, 'strT'));
+        if (!entry->ImagePath.Buffer) 
+        {
             ExFreePoolWithTag(entry, 'shld'); 
             return;
         }
