@@ -1,4 +1,5 @@
 #include "PutinShieldTemplate.h"
+#include "dkom.h"
 
 namespace shield::core 
 {
@@ -198,12 +199,18 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 void PutinDriverUnload(_In_ PDRIVER_OBJECT DriverObject) {
     PsSetCreateProcessNotifyRoutineEx(ProcessCreateNotifyRoutineEx, TRUE);
     PsRemoveCreateThreadNotifyRoutine(ThreadNotifyRoutine);
+    PsRemoveLoadImageNotifyRoutine(ImageLoadNotifyRoutine);
+
+    LARGE_INTEGER interval;
+    interval.QuadPart = -10000000; // 1 секунда
+    KeDelayExecutionThread(KernelMode, FALSE, &interval);
+
 
     ExAcquireFastMutex(&shield::core::ProcessListMutex);
-
     while (!IsListEmpty(&shield::core::TargetProcessListHead)) {
         PLIST_ENTRY link = RemoveHeadList(&shield::core::TargetProcessListHead);
         auto* entry = CONTAINING_RECORD(link, shield::core::ProcessTokenEntry, ListEntry);
+
         if (entry->OrigToken != nullptr) {
             PsDereferencePrimaryToken(entry->OrigToken);
         }
@@ -211,13 +218,29 @@ void PutinDriverUnload(_In_ PDRIVER_OBJECT DriverObject) {
     }
     ExReleaseFastMutex(&shield::core::ProcessListMutex);
 
+
+    ExAcquireFastMutex(&shield::core::ImageListMutex);
+    while (!IsListEmpty(&shield::core::LoadedImageListHead)) {
+        PLIST_ENTRY link = RemoveHeadList(&shield::core::LoadedImageListHead);
+        auto* entry = CONTAINING_RECORD(link, shield::core::LoadedImageEntry, ListEntry);
+
+        if (entry->ImagePath.Buffer != nullptr) {
+            ExFreePoolWithTag(entry->ImagePath.Buffer, 'strT');
+        }
+        ExFreePoolWithTag(entry, 'shld'); 
+    }
+    ExReleaseFastMutex(&shield::core::ImageListMutex);
+
     IoDeleteSymbolicLink(&shield::core::symLinkName);
 
     if (DriverObject->DeviceObject != nullptr) {
         IoDeleteDevice(DriverObject->DeviceObject);
     }
+
     KdPrint(("driver unload\n"));
 }
+
+
 
 extern "C" NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {
     UNREFERENCED_PARAMETER(RegistryPath);
